@@ -1,28 +1,28 @@
-import * as tok from '../src/LineTokenizer';
 import { expect } from 'chai';
 let fs = require("fs")
 let os = require('os')
 
+import {LineTokenizer} from '../src/LineTokenizer';
+import {TokenType, Token} from '../src/Token';
+
 function test(inputFile: string, expectedFile: string, inTune: boolean) : void {
-    let inputData: string = fs.readFileSync("./test/data/file/" + inputFile, "utf8");
-    let expectedResult: string = fs.readFileSync("./test/data/file/" + expectedFile, "utf8");
-    let tokenizer = new tok.LineTokenizer(inputData);
-    let token: tok.LineToken;
+    let inputData: string = fs.readFileSync("./test/data/line/" + inputFile, "utf8");
+    let expectedResult: string = fs.readFileSync("./test/data/line/" + expectedFile, "utf8");
+    let tokenizer = new LineTokenizer(inputData);
+    let token: Token;
     let actualResult: string = "";
     let first: boolean = true;
-    while (token = tokenizer.getToken(inTune), token.type !== tok.LineType.EOF) {
+    while (token = tokenizer.getToken(inTune), token.type !== TokenType.EOF) {
         if (first) {
             first = false;
         } else {
             actualResult += os.EOL;           
         }
-        actualResult += tok.LineType[token.type] + ":";
+        actualResult += TokenType[token.type] + ":";
         actualResult += token.value ? " " + token.value : ""
     }
     expect(actualResult).to.equal(expectedResult);
 }
-
-console.log("Starting...");
 
 describe('LineTokenizer', function() {
     it('should detect the abc declaration', function() {

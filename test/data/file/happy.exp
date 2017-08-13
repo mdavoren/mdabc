@@ -1,0 +1,22 @@
+AbcDeclaration: 2.1
+FileHeaderStart:
+InformationField: L:1/8
+FileHeaderEnd:
+FreeText: Some random text
+StyleSheetDirective: newpage
+TuneHeaderStart:
+InformationField: X:1
+InformationField: T:Name
+InformationField: C:XXX
+InformationField: K:A
+TuneHeaderEnd:
+TuneBodyStart:
+MusicCode: |abc|
+TuneBodyEnd:
+TuneHeaderStart:
+InformationField: X:2
+InformationField: T:Name2
+InformationField: C:YYY
+InformationField: K:B
+TuneHeaderEnd:
+FreeText: Some more text

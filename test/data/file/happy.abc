@@ -1,0 +1,19 @@
+%abc-2.1
+L:1/8
+
+Some random text
+
+%%newpage
+
+X:1
+T:Name
+C:XXX
+K:A
+|abc|
+
+X:2
+T:Name2
+C:YYY
+K:B
+
+Some more text
