@@ -25,20 +25,38 @@ namespace FileState {
     }
 }
 
+export declare type FileTokenizerCB = (tok: Token) => void;
+
 export class FileTokenizer {
     private state: FileState = FileState.Initial;
     private tokenizer: LineTokenizer;
     private savedInToken: Token|undefined;
     private outQueue = new Collections.Queue<Token>();
     private gotK: boolean = false;
+    private startedFileHeader: boolean = false;
+    private errorCB: FileTokenizerCB;
     
 
     constructor(inputData: string) {
         this.tokenizer = new LineTokenizer(inputData);
     }
     
-    private error(token: Token, messageId: string): void {
-        console.log("At %s:%s, %s", token.lineNumber, token.charNumber, messageId);
+    public setErrorCB(cb: FileTokenizerCB) {
+        this.errorCB = cb;
+    }
+
+    private error(token: Token, message: string): void {
+        console.log("At %s:%s, %s", token.lineNumber, token.charNumber, message);
+
+        if (!this.errorCB) {
+            return;
+        }
+
+        let tok: Token = Object.assign({}, token);
+        tok.type = TokenType.Error;
+        tok.value = message;
+
+        this.errorCB(tok);
     }
 
     public getToken(): Token {
@@ -65,14 +83,23 @@ export class FileTokenizer {
             token = this.tokenizer.getToken(FileState.isInTune(this.state));
         }
 
-        if (token.type === TokenType.EOF || token.type === TokenType.Comment) {
+        if (token.type === TokenType.Comment) {
+            return token;
+        }
+        if (token.type === TokenType.EOF) {
+            if (this.startedFileHeader) {
+                this.outQueue.enqueue(Object.assign({}, token));
+                token.type = TokenType.FileHeaderEnd;
+                token.value = undefined;
+            }
+            // Otherwise pass through EOF token as normal
             return token;
         }
 
         assert(!(token.type === TokenType.AbcDeclaration && this.state !== FileState.Initial));
         assert(!(token.type === TokenType.MusicCode && !FileState.isInTune(this.state)));
         assert(!(token.type === TokenType.FreeText && FileState.isInTune(this.state)));
-        
+
         switch (this.state) {
             case FileState.Initial:
                 switch (token.type) {
@@ -81,21 +108,30 @@ export class FileTokenizer {
                             this.error(token, "Unsupported version of ABC: '" + token.value + "'");
                             // But carry on
                         }
-
                         this.state = FileState.FileHeader;
-                        // Return the current abc declaration and then a file header start
-                        let tok = Object.assign({}, token);
-                        tok.type = TokenType.FileHeaderStart;
-                        tok.value = undefined;
-                        this.outQueue.enqueue(tok);
+                        // Pass through AbcDeclaration token as normal
                         break;
                     
-                    default:
+                    case TokenType.InformationField:
+                    case TokenType.StyleSheetDirective:
+                        this.error(token, "Missing ABC declaration");
+                        // Re-process this token in the File Header state
                         this.state = FileState.FileHeader;
-                        // Return a file header start and then process the token
-                        this.savedInToken = Object.assign({}, token);
-                        token.type = TokenType.FileHeaderStart;
-                        token.value = undefined;
+                        this.savedInToken = token;
+                        token = undefined;
+                        break;
+                    
+                    case TokenType.BlankLine:
+                        this.error(token, "Missing ABC declaration and no file header");
+                        // Move to inter tune state and swallow blank line
+                        this.state = FileState.InterTune;
+                        token = undefined;
+                        break;
+
+                    case TokenType.FreeText:
+                        this.error(token, "Unexpected free text at beginning of file");
+                        // Move to free text state passing through token
+                        this.state = FileState.InterTune;
                         break;
                 }
                 break;
@@ -104,23 +140,41 @@ export class FileTokenizer {
                 switch(token.type) {
                     case TokenType.InformationField:
                     case TokenType.StyleSheetDirective:
-                        // Do nothing
+                        if (!this.startedFileHeader) {
+                            this.startedFileHeader = true;
+                            // Return a file header start and then return the current token
+                            this.outQueue.enqueue(Object.assign({}, token));
+                            token.type = TokenType.FileHeaderStart;
+                            token.value = undefined;
+                        }
+                        // Otherwise pass token through as normal
                         break;
 
                     case TokenType.BlankLine:
+                        // Move to Inter Tune state
                         this.state = FileState.InterTune;
-                        // Convert blank line into tune header end
-                        token.type = TokenType.FileHeaderEnd;
-                        token.value = undefined;
+                        if (this.startedFileHeader) {
+                            this.startedFileHeader = false;
+                            // Convert blank line into file header end
+                            token.type = TokenType.FileHeaderEnd;
+                            token.value = undefined;
+                        } else {
+                            // Swallow the blank line token
+                            token = undefined;
+                        }
                         break;
 
                     case TokenType.FreeText:
-                        this.error(token, "Unrecognized text in the file header. The file header must be completed with a blank line before free text is allowed");
-                        // TODO: Figure out what to do here
-                        break;
-
-                    case TokenType.MusicCode:
-                        assert.fail("LineTokenizer returned music code outside of a tune");
+                        this.error(token, "Free text must be separated from the file header by empty lines");
+                        // Return a file header end if needed then re-process this token in the Free Text state
+                        this.state = FileState.FreeText;
+                        if (this.startedFileHeader) {
+                            this.startedFileHeader = false;
+                            this.savedInToken = Object.assign({}, token);
+                            token.type = TokenType.FileHeaderEnd;
+                            token.value = undefined;
+                        }
+                        // Otherwise pass token through as normal
                         break;
                 }
                 break;
@@ -129,12 +183,12 @@ export class FileTokenizer {
                 switch(token.type) {
                     case TokenType.InformationField:
                         if (!token.value!.startsWith("X:")) {
-                            this.error(token, "Got information line to start a tune, but it is not X: '" + token.value + "'");
+                            this.error(token, "Got information field to start a tune, but it is not X: '" + token.value + "'");
                             // But carry on
                         }
 
-                        this.state = FileState.TuneHeader;
                         // Return a tune header start and then process the token
+                        this.state = FileState.TuneHeader;
                         this.savedInToken = Object.assign({}, token);
                         token.type = TokenType.TuneHeaderStart;
                         token.value = undefined;
@@ -150,6 +204,7 @@ export class FileTokenizer {
                         break;
 
                     case TokenType.FreeText:
+                        // Pass through token as normal
                         this.state = FileState.FreeText;
                         break;
                 }
@@ -158,18 +213,22 @@ export class FileTokenizer {
             case FileState.FreeText:
                 switch(token.type) {
                     case TokenType.FreeText:
-                        // Do nothing
+                        // Pass through token as normal
                         break;
 
                     case TokenType.BlankLine:
+                        // Move to Inter Tune state and swallow the blank line token
                         this.state = FileState.InterTune;
-                        // Swallow the blank line token
                         token = undefined;                                                
                         break;
                         
                     case TokenType.InformationField:
                     case TokenType.StyleSheetDirective:
                         this.error(token, "Free text must be separated from abc tunes, typeset text and the file header by empty lines");
+                        // Re-process this token in the Inter Tune state
+                        this.state = FileState.InterTune;
+                        this.savedInToken = token;
+                        token = undefined;
                         break;
                 }
                 break;

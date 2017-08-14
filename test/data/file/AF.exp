@@ -1,0 +1,3 @@
+AbcDeclaration: 2.1
+Error: Free text must be separated from the file header by empty lines
+FreeText: xyz
