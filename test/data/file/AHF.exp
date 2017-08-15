@@ -1,6 +1,6 @@
 AbcDeclaration: 2.1
 FileHeaderStart:
 InformationField: K:A
-Error: Free text must be separated from the file header by empty lines
+Error: Unexpected free text in the file header
 FileHeaderEnd:
 FreeText: xyz

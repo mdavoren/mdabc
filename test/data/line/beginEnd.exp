@@ -1,0 +1,14 @@
+AbcDeclaration: 2.1
+BlankLine:
+Error: Text after %%begintext will be ignored
+Text(BeginText):  bogus begin text
+Text(Text): text is treated as actual text
+Text(Text): text
+Text(Text): center is treated as actual text
+Text(Text): center
+Text(Text): newpage is treated as actual text
+Text(Text):      random stuff
+Error: Line between begintext and %%endtext does not begin with %%
+Text(Text): no %% at beginning of the line
+Error: Text after %%endtext will be ignored
+Text(EndText):  bogus end text

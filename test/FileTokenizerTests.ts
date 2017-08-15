@@ -1,15 +1,15 @@
-import {TokenType, Token} from '../src/Token';
-import {FileTokenizer} from '../src/FileTokenizer';
+import {Token, TokenType, TokenSubType} from "../src/Token";
+import {FileTokenizer} from "../src/FileTokenizer";
 
-import { expect } from 'chai';
-let fs = require("fs")
-let os = require('os')
+import { expect } from "chai";
+import fs = require("fs");
+import os = require("os");
 
-function test(fileName: string) : void {
+function test(fileName: string): void {
     const dataDir: string = "./test/data/file/";
-    let inputData: string = fs.readFileSync(dataDir + fileName + ".abc", "utf8");
-    let expectedResult: string = fs.readFileSync(dataDir + fileName + ".exp", "utf8");
-    let tokenizer = new FileTokenizer(inputData);
+    const inputData: string = fs.readFileSync(dataDir + fileName + ".abc", "utf8");
+    const expectedResult: string = fs.readFileSync(dataDir + fileName + ".exp", "utf8");
+    const tokenizer = new FileTokenizer(inputData);
     let token: Token;
     let actualResult: string = "";
     let first: boolean = true;
@@ -18,9 +18,11 @@ function test(fileName: string) : void {
         if (first) {
             first = false;
         } else {
-            actualResult += os.EOL;           
+            actualResult += os.EOL;
         }
-        actualResult += TokenType[tok.type] + ":";
+        actualResult += TokenType[tok.type];
+        actualResult += tok.subType ? "(" + TokenSubType[tok.subType] + ")" : "";
+        actualResult += ":";
         actualResult += tok.value ? " " + tok.value : "";
     }
 
@@ -33,48 +35,48 @@ function test(fileName: string) : void {
     expect(actualResult).to.equal(expectedResult);
 }
 
-describe('FileTokenizer', function() {
-    it('should be happy', function() {
+describe("FileTokenizer", (): void => {
+    it("should be happy", (): void => {
         test("happy");
-    })
-    
-    it('should handle an ABC declaration', function() {
+    });
+
+    it("should handle an ABC declaration", (): void => {
         test("A");
-    })
-    
-    it('should handle an ABC declaration, file header', function() {
+    });
+
+    it("should handle an ABC declaration, file header", (): void => {
         test("AH");
-    })
-    
-    it('should handle an ABC declaration, free text', function() {
+    });
+
+    it("should handle an ABC declaration, free text", (): void => {
         test("AF");
-    })
-    
-    it('should handle an ABC declaration, blank line', function() {
+    });
+
+    it("should handle an ABC declaration, blank line", (): void => {
         test("AB");
-    })
-    
-    it('should handle an ABC declaration, blank line, free text', function() {
+    });
+
+    it("should handle an ABC declaration, blank line, free text", (): void => {
         test("ABF");
-    })
-    
-    it('should handle an ABC declaration, file header, free text', function() {
+    });
+
+    it("should handle an ABC declaration, file header, free text", (): void => {
         test("AHF");
-    })
+    });
 
-    it('should handle an ABC declaration, file header, blank line, free text', function() {
+    it("should handle an ABC declaration, file header, blank line, free text", (): void => {
         test("AHBF");
-    })
+    });
 
-    it('should handle a blank line, free text', function() {
+    it("should handle a blank line, free text", (): void => {
         test("BF");
-    })
+    });
 
-    it('should handle free text', function() {
+    it("should handle free text", (): void => {
         test("F");
-    })
+    });
 
-    it('should handle file header', function() {
+    it("should handle file header", (): void => {
         test("H");
-    })
-})
+    });
+});

@@ -1,0 +1,11 @@
+%abc-2.1
+
+%%begintext bogus begin text
+%%text is treated as actual text
+%%text
+%%center is treated as actual text
+%%center
+%%newpage is treated as actual text
+%%     random stuff
+no %% at beginning of the line
+%%endtext bogus end text

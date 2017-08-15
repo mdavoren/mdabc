@@ -3,7 +3,8 @@ FileHeaderStart:
 InformationField: L:1/8
 FileHeaderEnd:
 FreeText: Some random text
-StyleSheetDirective: newpage
+Error: Unexpected stylesheet directive between tunes
+StyleSheet: newpage
 TuneHeaderStart:
 InformationField: X:1
 InformationField: T:Name

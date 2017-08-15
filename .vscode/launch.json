@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Mocha Tests",
+            "name": "All Mocha Tests",
             "type": "node",
             "request": "launch",
             "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
@@ -15,6 +15,28 @@
                 "-r",
                 "ts-node/register",
                 "${workspaceRoot}/dist/test/**/*.js"
+            ],
+            "cwd": "${workspaceRoot}",
+            "env": {
+              "NODE_ENV": "testing"
+            },          
+            "internalConsoleOptions": "openOnSessionStart",
+            "outFiles": [
+                "${workspaceRoot}/dist/**/*"
+            ],
+            "sourceMaps": true
+        },
+        {
+            "name": "Single Mocha Test",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "--no-timeouts",
+                "--colors",
+                "-r",
+                "ts-node/register",
+                "${workspaceRoot}/dist/test/**/${fileBasenameNoExtension}.js"
             ],
             "cwd": "${workspaceRoot}",
             "env": {

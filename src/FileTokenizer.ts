@@ -1,8 +1,9 @@
-import * as assert from 'assert'
-import * as Collections from 'typescript-collections';
+import * as assert from "assert";
+import * as Collections from "typescript-collections";
 
-import {LineTokenizer} from './LineTokenizer';
-import {TokenType, Token} from './Token';
+import {BaseTokenizer} from "./BaseTokenizer";
+import {LineTokenizer} from "./LineTokenizer";
+import {Token, TokenType} from "./Token";
 
 enum FileState {
     Initial,
@@ -25,43 +26,26 @@ namespace FileState {
     }
 }
 
-export declare type FileTokenizerCB = (tok: Token) => void;
-
-export class FileTokenizer {
+/*
+ * Second of several tokenizers, FileTokenizer identifies and checks
+ * sections of a file
+ */
+export class FileTokenizer extends BaseTokenizer {
     private state: FileState = FileState.Initial;
     private tokenizer: LineTokenizer;
     private savedInToken: Token|undefined;
     private outQueue = new Collections.Queue<Token>();
     private gotK: boolean = false;
     private startedFileHeader: boolean = false;
-    private errorCB: FileTokenizerCB;
-    
 
     constructor(inputData: string) {
+        super();
         this.tokenizer = new LineTokenizer(inputData);
-    }
-    
-    public setErrorCB(cb: FileTokenizerCB) {
-        this.errorCB = cb;
-    }
-
-    private error(token: Token, message: string): void {
-        console.log("At %s:%s, %s", token.lineNumber, token.charNumber, message);
-
-        if (!this.errorCB) {
-            return;
-        }
-
-        let tok: Token = Object.assign({}, token);
-        tok.type = TokenType.Error;
-        tok.value = message;
-
-        this.errorCB(tok);
     }
 
     public getToken(): Token {
         let token: Token|undefined;
-        while ((token = this.getTokenInternal()) == undefined) {
+        while ((token = this.getTokenInternal()) === undefined) {
             // do nothing
         }
         return token;
@@ -111,16 +95,16 @@ export class FileTokenizer {
                         this.state = FileState.FileHeader;
                         // Pass through AbcDeclaration token as normal
                         break;
-                    
+
                     case TokenType.InformationField:
-                    case TokenType.StyleSheetDirective:
+                    case TokenType.StyleSheet:
                         this.error(token, "Missing ABC declaration");
                         // Re-process this token in the File Header state
                         this.state = FileState.FileHeader;
                         this.savedInToken = token;
                         token = undefined;
                         break;
-                    
+
                     case TokenType.BlankLine:
                         this.error(token, "Missing ABC declaration and no file header");
                         // Move to inter tune state and swallow blank line
@@ -131,15 +115,21 @@ export class FileTokenizer {
                     case TokenType.FreeText:
                         this.error(token, "Unexpected free text at beginning of file");
                         // Move to free text state passing through token
-                        this.state = FileState.InterTune;
+                        this.state = FileState.FreeText;
+                        break;
+
+                    case TokenType.Text:
+                        this.error(token, "Unexpected typeset text at beginning of file");
+                        // Move to typeset text state passing through token
+                        this.state = FileState.TypesetText;
                         break;
                 }
                 break;
 
             case FileState.FileHeader:
-                switch(token.type) {
+                switch (token.type) {
                     case TokenType.InformationField:
-                    case TokenType.StyleSheetDirective:
+                    case TokenType.StyleSheet:
                         if (!this.startedFileHeader) {
                             this.startedFileHeader = true;
                             // Return a file header start and then return the current token
@@ -165,7 +155,7 @@ export class FileTokenizer {
                         break;
 
                     case TokenType.FreeText:
-                        this.error(token, "Free text must be separated from the file header by empty lines");
+                        this.error(token, "Unexpected free text in the file header");
                         // Return a file header end if needed then re-process this token in the Free Text state
                         this.state = FileState.FreeText;
                         if (this.startedFileHeader) {
@@ -176,11 +166,24 @@ export class FileTokenizer {
                         }
                         // Otherwise pass token through as normal
                         break;
+
+                    case TokenType.Text:
+                        this.error(token, "Unexpected typeset text in the file header");
+                         // Return a file header end if needed then re-process this token in the Typeset Text state
+                        this.state = FileState.TypesetText;
+                        if (this.startedFileHeader) {
+                            this.startedFileHeader = false;
+                            this.savedInToken = Object.assign({}, token);
+                            token.type = TokenType.FileHeaderEnd;
+                            token.value = undefined;
+                        }
+                         // Otherwise pass token through as normal
+                        break;
                 }
                 break;
 
             case FileState.InterTune:
-                switch(token.type) {
+                switch (token.type) {
                     case TokenType.InformationField:
                         if (!token.value!.startsWith("X:")) {
                             this.error(token, "Got information field to start a tune, but it is not X: '" + token.value + "'");
@@ -193,9 +196,11 @@ export class FileTokenizer {
                         token.type = TokenType.TuneHeaderStart;
                         token.value = undefined;
                         break;
-                    
-                    case TokenType.StyleSheetDirective:
-                        // Unclear if this is allowed. TODO: Check this
+
+                    case TokenType.StyleSheet:
+                        // Unclear what to do. Stay in inter tune for now   TODO: Check this
+                        this.error(token, "Unexpected stylesheet directive between tunes");
+                        // Pass through token as normal
                         break;
 
                     case TokenType.BlankLine:
@@ -204,14 +209,19 @@ export class FileTokenizer {
                         break;
 
                     case TokenType.FreeText:
-                        // Pass through token as normal
+                        // Move to free text state and pass through token as normal
                         this.state = FileState.FreeText;
+                        break;
+
+                    case TokenType.Text:
+                        // Move to typeset text state and pass through token as normal
+                        this.state = FileState.TypesetText;
                         break;
                 }
                 break;
-        
+
             case FileState.FreeText:
-                switch(token.type) {
+                switch (token.type) {
                     case TokenType.FreeText:
                         // Pass through token as normal
                         break;
@@ -219,42 +229,80 @@ export class FileTokenizer {
                     case TokenType.BlankLine:
                         // Move to Inter Tune state and swallow the blank line token
                         this.state = FileState.InterTune;
-                        token = undefined;                                                
+                        token = undefined;
                         break;
-                        
+
                     case TokenType.InformationField:
-                    case TokenType.StyleSheetDirective:
-                        this.error(token, "Free text must be separated from abc tunes, typeset text and the file header by empty lines");
+                        this.error(token, "Unexpected information field in free text section");
                         // Re-process this token in the Inter Tune state
                         this.state = FileState.InterTune;
                         this.savedInToken = token;
                         token = undefined;
                         break;
+
+                    case TokenType.StyleSheet:
+                        // Unclear what to do. Move to in inter tune for now   TODO: Check this
+                        this.error(token, "Unexpected stylesheet directive between tunes");
+                        this.state = FileState.InterTune;
+                        // Pass through token as normal
+                        break;
+
+                    case TokenType.Text:
+                        this.error(token, "Unexpected text directive in free text section");
+                        // Move to typeset text state and pass through token as normal
+                        this.state = FileState.TypesetText;
+                        break;
                 }
                 break;
 
             case FileState.TypesetText:
-                switch(token.type) {
+                switch (token.type) {
+                    case TokenType.Text:
+                         // Pass through token as normal
+                         break;
+
                     case TokenType.InformationField:
-                    case TokenType.StyleSheetDirective:
+                        this.error(token, "Unexpected information field in typeset text section");
+                        // Re-process this token in the Inter Tune state
+                        this.state = FileState.InterTune;
+                        this.savedInToken = token;
+                        token = undefined;
+                        break;
+
+                    case TokenType.StyleSheet:
+                        // Unclear what to do. Move to in inter tune for now   TODO: Check this
+                        this.error(token, "Unexpected stylesheet directive in typeset text section");
+                        this.state = FileState.InterTune;
+                        // Pass through token as normal
+                        break;
+
                     case TokenType.BlankLine:
+                        // Move to Inter Tune state and swallow the blank line token
+                        this.state = FileState.InterTune;
+                        token = undefined;
+                        break;
+
                     case TokenType.FreeText:
-                    case TokenType.MusicCode:
+                        this.error(token, "Unexpected free text directive in typeset text section");
+                        // Move to free text state and pass through token as normal
+                        this.state = FileState.FreeText;
+                        break;
                 }
                 break;
 
             case FileState.TuneHeader:
-                switch(token.type) {
+                switch (token.type) {
                     case TokenType.InformationField:
                         if (token.value!.startsWith("K:")) {
                             this.gotK = true;
                         } else if (this.gotK) {
-                            this.error(token, "Found field information line after a K:");                            
+                            this.error(token, "Found field information line after a K:");
                         }
                         // Do nothing
                         break;
 
-                    case TokenType.StyleSheetDirective:
+                    case TokenType.Text:
+                    case TokenType.StyleSheet:
                         // Do nothing;
                         break;
 
@@ -279,19 +327,20 @@ export class FileTokenizer {
                         token.type = TokenType.TuneHeaderEnd;
                         token.value = undefined;
 
-                        let tok = Object.assign({}, token);
+                        const tok = Object.assign({}, token);
                         tok.type = TokenType.TuneBodyStart;
                         tok.value = undefined;
                         this.outQueue.enqueue(tok);
-                        break;                    
+                        break;
                 }
                 break;
 
-            case FileState.TuneBody:        
-                switch(token.type) {
+            case FileState.TuneBody:
+                switch (token.type) {
                     case TokenType.InformationField:
-                    case TokenType.StyleSheetDirective:
+                    case TokenType.StyleSheet:
                     case TokenType.MusicCode:
+                    case TokenType.Text:
                         // Do nothing
                         break;
 
@@ -300,7 +349,7 @@ export class FileTokenizer {
                         // Convert blank line into tune body end
                         token.type = TokenType.TuneBodyEnd;
                         token.value = undefined;
-                        break;                    
+                        break;
                 }
                 break;
         }
