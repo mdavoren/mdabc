@@ -10,7 +10,7 @@ export class BaseTokenizer {
     }
 
     protected error(token: Token, message: string): void {
-        console.log("At %s:%s, %s", token.lineNumber, token.charNumber, message);
+        console.log("At %s, %s", token.lineNumber, message);
 
         if (!this.errorCB) {
             return;

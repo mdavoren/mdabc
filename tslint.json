@@ -5,14 +5,16 @@
     ],
     "jsRules": {},
     "rules": {
-        "ordered-imports": [false],
+        "ordered-imports": false,
         "trailing-comma": [false],
         "object-literal-sort-keys": false,
+        "object-literal-key-quotes": [true, "consistent"],
         "no-namespace": false,
         "no-conditional-assignment": false,
         "max-line-length": [true, 150],
         "no-console": [false],
-        "interface-name": [false]
+        "interface-name": [false],
+        "member-ordering": false
     },
     "rulesDirectory": []
 }

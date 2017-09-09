@@ -11,7 +11,7 @@ console.log("Input = '" + inputData + "'");
 
 const tokenizer = new LineTokenizer(inputData);
 let token: Token;
-while (token = tokenizer.getToken(true), token.type !== TokenType.EOF) {
+while (token = tokenizer.getToken(), token.type !== TokenType.EOF) {
     console.log(TokenType[token.type] + ": " + token.value + "\n");
 }
 console.log("Complete");

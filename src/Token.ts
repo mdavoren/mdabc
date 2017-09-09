@@ -5,12 +5,10 @@ export enum TokenType {
 
     // Line tokens
     AbcDeclaration,
+    LineComment,
     BlankLine,
-    Comment,
-    FreeText,
     InformationField,
-    MusicCode,
-    StyleSheet,
+    Directive,
     Text,
 
     // File section tokens
@@ -32,7 +30,7 @@ export enum TokenSubType {
 export interface Token {
     type: TokenType;
     subType: TokenSubType|undefined;
+    originalLine: string,
     value: string|undefined;
     lineNumber: number;
-    charNumber: number;
 }

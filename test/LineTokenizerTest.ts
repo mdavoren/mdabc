@@ -5,7 +5,7 @@ import os = require("os");
 import {LineTokenizer} from "../src/LineTokenizer";
 import {TokenType, TokenSubType, Token} from "../src/Token";
 
-function test(fileName: string, inTune: boolean): void {
+function test(fileName: string): void {
     const dataDir: string = "./test/data/line/";
     const inputData: string = fs.readFileSync(dataDir + fileName + ".abc", "utf8");
     const expectedResult: string = fs.readFileSync(dataDir + fileName + ".exp", "utf8");
@@ -28,7 +28,7 @@ function test(fileName: string, inTune: boolean): void {
 
     tokenizer.setErrorCB(processToken);
 
-    while (token = tokenizer.getToken(inTune), token.type !== TokenType.EOF) {
+    while (token = tokenizer.getToken(), token.type !== TokenType.EOF) {
         processToken(token);
     }
 
@@ -37,39 +37,39 @@ function test(fileName: string, inTune: boolean): void {
 
 describe("LineTokenizer", (): void => {
     it("should detect the abc declaration", (): void => {
-        test("abcDeclaration", false);
+        test("abcDeclaration");
     });
     it("should detect a blank line", (): void => {
-        test("blankLine", false);
+        test("blankLine");
     });
     it("should detect a comment line", (): void => {
-        test("comment", false);
+        test("comment");
     });
     it("should detect a free text line", (): void => {
-        test("freeText", false);
+        test("freeText");
     });
     it("should detect an information field line", (): void => {
-        test("informationField", false);
+        test("informationField");
     });
     it("should detect an information field line with a comment", (): void => {
-        test("informationFieldWithComment", false);
+        test("informationFieldWithComment");
     });
     it("should detect a music code line", (): void => {
-        test("musicCode", true);
+        test("musicCode");
     });
     it("should detect a music code line with a comment", (): void => {
-        test("musicCodeWithComment", true);
+        test("musicCodeWithComment");
     });
     it("should detect a stylesheet line", (): void => {
-        test("stylesheet", false);
+        test("stylesheet");
     });
     it("should detect a %%text directive", (): void => {
-        test("text", false);
+        test("text");
     });
     it("should detect a %%center directive", (): void => {
-        test("center", false);
+        test("center");
     });
     it("should detect a %%begintext/%%endtext block", (): void => {
-        test("beginEnd", false);
+        test("beginEnd");
     });
 });
